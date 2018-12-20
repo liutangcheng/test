@@ -1,0 +1,148 @@
+如果想开放端口（如：8889）
+（1）通过vi /etc/sysconfig/iptables 进入编辑增添一条
+-A INPUT -p tcp -m tcp --dport 8889 -j ACCEPT 即可
+（2）执行 /etc/init.d/iptables restart 命令将iptables服务重启
+#（3）保存 /etc/rc.d/init.d/iptables save
+
+2、iptables基础
+①规则(rules)：网络管理员预定义的条件
+②链(chains)： 是数据包传播的路径
+(tables)：内置3个表filter表，nat表，mangle表分别用于实现包过
+滤网络地址转换和包重构的功能
+④filter表是系统默认的，INPUT表(进入的包)，FORWORD(转发的包)，OUTPUT
+(处理本地生成的包)，filter表只能对包进行授受和丢弃的操作。
+⑤nat表(网络地址转换)，PREROUTING(修改即将到来的数据包)，OUTPUT
+	(修改在路由之前本地生成的数据包)，POSTROUTING(修改即将出去的数据包)
+⑥mangle表，PREROUTING，OUTPUT，FORWORD，POSTROUTING，INPUT
+http://www.cnblogs.com/blog-yuesheng521/p/7198829.html
+③增加，插入，删除和替换规则
+     iptables [-t 表名] <-A|I|D|R> 链名 [规则编号] [-i|o 网卡名称] [-p 协议类型] [-s 源ip|源子网] [--sport 源端口号] [-d 目的IP|目标子网] [--dport 目标端口号] [-j 动作]
+    参数：-A 增加
+               -I 插入
+               -D 删除
+               -R 替换
+查看所有规则：iptables -L -n
+保存命令添加得到规则：/etc/rc.d/init.d/iptables save
+重启：service iptables restart
+https://www.bilibili.com/video/av34865564/?p=89
+
+应用层ftp,http,ssh,dhcp（七层）
+表示层
+会话层
+传输层,tcp,udp-》防火墙（四层）
+网络层ip,icmp(ping),igmp 路由器
+数据链路层：数据帧
+物理层:二进制bit流
+
+四表
+filter:实现包过滤（重点）
+nat：修改数据包源地址和目标地址
+mangle,raw
+五链
+PREROUTING:路由前
+input:
+output:
+forward:
+postrouting:路由后
+规则链
+iptables是表的集合，表是链的集合，链是规则集合，规则是作用在链上
+
+iptables -t filter -L
+/etc/sysconfig/iptables
+L：查看
+A：添加
+I：插入
+D：删除
+F:清空
+P：设置策略
+R：覆盖规则
+
+动作
+filter
+-j ACCEPT
+-j DROP
+-j REJECT
+-j LOG  写日志/var/log/messages,然后将包传递给下一条规则
+
+nat:
+-j SNAT
+-j DNAT
+
+iptables -t filter -L INPUT --line-number
+
+iptables -t filter -I INPUT 1 -j reject:规则1之前
+P：iptables -t filter -P INPUT DROP:修改默认规则
+
+端口不能单独存在必须和协议一起使用
+匹配条件
+-s
+-d
+-p
+-i
+-o
+53:dns
+ftp:20,21
+samba:137,138,139,445
+
+源和目标
+!取反：iptables -t filter -A ! -s 10.1.1 -j ACCEPT
+先看防火墙，再看网卡
+查看路由表route -n 
+删除iptables -t filter -D 1
+
+iptables -t filter -I INPUT -s 10.1.1 -p ICMP --icmp-type 8 -j DROP
+ping:8请求
+ping:0回显
+
+查看netstat -nltp|grep 22
+端口
+iptables -t filter -I INPUT -p tcp --dport 22  -j DROP
+
+网段：
+iptables -t filter -I INPUT -p tcp --dport 22 -s 10.10.1/24  -j DROP
+
+总结：iptables是控制netfilter模块的程序
+
+
+yum
+yum list
+1.挂载镜像到本地
+mkdir /iso
+lsblk
+mount -o ro /dev/sr0 /iso（挂载）
+echo "mount -o ro /dev/sr0 /iso" >> /etc/rc.local(开机运行)
+2.配置文件
+/etc/yum.repos.d/local.repo添加
+[local]
+name=xxx
+baseurl=file:///iso
+enabled=1
+gpgcheck=0
+
+vsftpd
+/etc/rc.d/init.d/vsftpd 启动脚本
+/etc/vsftpd 主目录
+/etc/vsftpd/vsftpd.conf主配置文件
+/var/ftp 匿名用户默认数据目录
+/var/ftp/pub 匿名用户默认数据目录扩展目录
+service vsftpd start
+开机自启chkconfig vsftpd on
+netstat nltp |grep vsftpd
+匿名：ftp://linux1/
+ftp lftp客户端工具
+修改密码echo 123|passwd --stdin xiaohei
+修改主机名hostname client
+默认情况匿名用户不能上传文件
+/etc/vsftpd/vsftpd.conf
+1.禁止匿名用户访问，在服务器上创建客服用户
+2.指定数据目录/data/kefu
+mkdir -p /data/kefu
+配置文件修改
+local_root=/data/kefu
+3.禁锢用户只能在家目录
+chroot_local_user=YES
+
+重启服务service vsftpd restart
+
+配置网络源
+
